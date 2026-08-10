@@ -19,8 +19,8 @@ def _db_path():
     global _DB_PATH
     if _DB_PATH is None:
         url = get_settings().DATABASE_URL
-        # sqlite:///./xxx.db -> ./xxx.db
-        _DB_PATH = url.replace("sqlite:///", "", 1) if url.startswith("sqlite") else "./ghgw_cloud.db"
+        # sqlite:///./xxx.db -> ./xxx.db；容器内默认 /tmp（保证可写）
+        _DB_PATH = url.replace("sqlite:///", "", 1) if url.startswith("sqlite") else "/tmp/ghgw_cloud.db"
     return _DB_PATH
 
 
