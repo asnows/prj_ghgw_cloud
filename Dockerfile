@@ -20,4 +20,5 @@ ENV APP_ENV=prod \
 EXPOSE 8000
 
 # 关键：监听 Railway 注入的 $PORT（默认 8080），否则平台健康检查连不上
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2"]
+# 注意：单 worker——Railway 免费层内存有限，多 worker 启动会内存不足崩溃
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
