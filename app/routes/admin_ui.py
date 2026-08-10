@@ -67,12 +67,23 @@ PAGE = """<!DOCTYPE html>
     <p>发卡 · 激活码 · 用量 · 用户</p>
   </div>
 
-  <div class="card" style="display:flex; gap:14px; align-items:center;">
-    <h2 style="flex:0 0 auto; margin:0;">📊 概览</h2>
-    <div class="stat"><b id="statTotal">-</b><span>总激活码</span></div>
-    <div class="stat"><b id="statActive">-</b><span>有效</span></div>
-    <div class="stat"><b id="statCalls">-</b><span>总调用</span></div>
-    <button class="ghost" onclick="logout()" style="margin-left:auto;">退出</button>
+  <div class="card">
+    <h2>📊 概览</h2>
+    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+      <div class="stat"><b id="statTotal">-</b><span>总激活码</span></div>
+      <div class="stat"><b id="statActive">-</b><span>有效</span></div>
+      <div class="stat"><b id="statExpiring" style="color:#D97706;">-</b><span>7天内到期</span></div>
+      <div class="stat"><b id="statExpired" style="color:#DC2626;">-</b><span>已到期</span></div>
+      <div class="stat"><b id="statRevoked">-</b><span>已停用</span></div>
+      <div class="stat"><b id="statMonth">-</b><span>月卡数</span></div>
+      <div class="stat"><b id="statYear">-</b><span>年卡数</span></div>
+      <div class="stat"><b id="statDevices">-</b><span>绑定设备</span></div>
+      <div class="stat"><b id="statCalls">-</b><span>总调用</span></div>
+      <div class="stat"><b id="statOrders">-</b><span>订单数</span></div>
+      <div class="stat"><b id="statAmount" style="color:#15803D;">-</b><span>累计收入(元)</span></div>
+      <div class="stat"><b id="statMonthAmount" style="color:#15803D;">-</b><span>本月收入(元)</span></div>
+    </div>
+    <button class="ghost" onclick="logout()" style="margin-top:12px;">退出登录</button>
   </div>
 
   <div class="card">
@@ -88,17 +99,30 @@ PAGE = """<!DOCTYPE html>
   </div>
 
   <div class="card">
-    <h2>🔑 激活码列表（最近 200）</h2>
+    <h2>🔑 激活码列表（最近 300）</h2>
+    <div style="margin-bottom:10px; display:flex; gap:8px; align-items:center;">
+      <input id="searchInput" placeholder="搜索激活码..." style="flex:1;"/>
+      <select id="statusSel">
+        <option value="">全部状态</option>
+        <option value="active">有效</option>
+        <option value="revoked">已停用</option>
+      </select>
+      <button onclick="loadLicenses()">查询</button>
+      <button class="ghost" onclick="exportLicenses()">导出 CSV</button>
+    </div>
     <table>
-      <thead><tr><th>激活码</th><th>套餐</th><th>到期日</th><th>状态</th><th>绑定设备</th><th>操作</th></tr></thead>
+      <thead><tr><th>激活码</th><th>套餐</th><th>到期日</th><th>状态</th><th>绑定设备</th><th>发放时间</th><th>操作</th></tr></thead>
       <tbody id="licBody"></tbody>
     </table>
   </div>
 
   <div class="card">
     <h2>🧾 订单记录（付款→发码）</h2>
+    <div style="margin-bottom:10px; display:flex; justify-content:flex-end;">
+      <button class="ghost" onclick="exportOrders()">导出 CSV</button>
+    </div>
     <table>
-      <thead><tr><th>订单号</th><th>平台</th><th>金额(分)</th><th>套餐</th><th>关联激活码</th><th>付款时间</th></tr></thead>
+      <thead><tr><th>订单号</th><th>平台</th><th>金额(元)</th><th>套餐</th><th>关联激活码</th><th>付款时间</th></tr></thead>
       <tbody id="orderBody"></tbody>
     </table>
   </div>
@@ -136,24 +160,24 @@ function showMain() {
   loadAll();
 }
 function loadAll() {
-  api('/admin/licenses').then(d => {
-    if (!Array.isArray(d)) return;
-    const body = document.getElementById('licBody');
-    body.innerHTML = d.map(l => {
-      const devs = JSON.parse(l.devices || '[]');
-      return `<tr><td style="font-family:monospace;font-size:12px;">${l.code}</td>
-        <td>${l.plan==='year'?'年卡':'月卡'}</td>
-        <td>${l.expires_at}</td>
-        <td><span class="badge ${l.status}">${l.status==='active'?'有效':'停用'}</span></td>
-        <td>${devs.length} 台</td>
-        <td>${l.status==='active' ? `<button class="ghost" onclick="revoke('${l.code}')">停用</button>` : ''}</td></tr>`;
-    }).join('');
-    document.getElementById('statTotal').textContent = d.length;
-    document.getElementById('statActive').textContent = d.filter(x=>x.status==='active').length;
+  api('/admin/stats').then(d => {
+    if (!d || d.total === undefined) return;
+    document.getElementById('statTotal').textContent = d.total;
+    document.getElementById('statActive').textContent = d.active;
+    document.getElementById('statExpiring').textContent = d.expiring;
+    document.getElementById('statExpired').textContent = d.expired;
+    document.getElementById('statRevoked').textContent = d.revoked;
+    document.getElementById('statMonth').textContent = d.month_cards;
+    document.getElementById('statYear').textContent = d.year_cards;
+    document.getElementById('statDevices').textContent = d.devices;
+    document.getElementById('statCalls').textContent = d.total_calls;
+    document.getElementById('statOrders').textContent = d.order_count;
+    document.getElementById('statAmount').textContent = (d.total_amount/100).toFixed(2);
+    document.getElementById('statMonthAmount').textContent = (d.month_amount/100).toFixed(2);
   });
+  loadLicenses();
   api('/admin/usage').then(d => {
     if (!d || !d.recent) return;
-    document.getElementById('statCalls').textContent = d.total_calls || 0;
     document.getElementById('usageBody').innerHTML = d.recent.map(u =>
       `<tr><td style="font-family:monospace;font-size:12px;">${u.license_code||'-'}</td>
        <td>${u.tool}</td><td>${u.ts}</td></tr>`).join('');
@@ -162,9 +186,59 @@ function loadAll() {
     if (!Array.isArray(d)) return;
     document.getElementById('orderBody').innerHTML = d.map(o =>
       `<tr><td style="font-family:monospace;font-size:12px;">${o.order_id}</td>
-       <td>${o.platform}</td><td>${o.amount}</td><td>${o.plan==='year'?'年卡':'月卡'}</td>
+       <td>${o.platform}</td><td>${(o.amount/100).toFixed(2)}</td><td>${o.plan==='year'?'年卡':'月卡'}</td>
        <td style="font-family:monospace;font-size:12px;">${o.license_code||'-'}</td><td>${o.paid_at}</td></tr>`).join('');
   });
+}
+function loadLicenses() {
+  const q = document.getElementById('searchInput').value.trim();
+  const st = document.getElementById('statusSel').value;
+  api('/admin/licenses?q='+encodeURIComponent(q)+'&status='+st).then(d => {
+    if (!Array.isArray(d)) return;
+    const today = new Date().toISOString().slice(0,10);
+    document.getElementById('licBody').innerHTML = d.map(l => {
+      const devs = JSON.parse(l.devices || '[]');
+      const expiring = l.status==='active' && l.expires_at > today && l.expires_at <= new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+      const expired = l.status==='active' && l.expires_at < today;
+      const statusHtml = l.status==='active'
+        ? (expired ? '<span class="badge" style="background:#FEE2E2;color:#B91C1C;">已到期</span>'
+          : expiring ? '<span class="badge" style="background:#FEF3C7;color:#B45309;">即将到期</span>'
+          : '<span class="badge active">有效</span>')
+        : '<span class="badge revoked">停用</span>';
+      return `<tr><td style="font-family:monospace;font-size:12px;">${l.code}</td>
+        <td>${l.plan==='year'?'年卡':'月卡'}</td>
+        <td style="${expired?'color:#B91C1C;font-weight:600;':''}">${l.expires_at}</td>
+        <td>${statusHtml}</td>
+        <td>${devs.length} 台</td>
+        <td style="font-size:12px;color:#64748B;">${l.created_at}</td>
+        <td>${l.status==='active' ? `<button class="ghost" onclick="revoke('${l.code}')">停用</button>` : ''}</td></tr>`;
+    }).join('');
+  });
+}
+function exportLicenses() {
+  api('/admin/licenses?q='+encodeURIComponent(document.getElementById('searchInput').value.trim())+'&status='+document.getElementById('statusSel').value).then(d => {
+    if (!Array.isArray(d)) return;
+    const csv = '\ufeff激活码,套餐,到期日,状态,绑定设备,发放时间\n' + d.map(l => {
+      const devs = JSON.parse(l.devices||'[]').length;
+      return [l.code, l.plan==='year'?'年卡':'月卡', l.expires_at, l.status, devs+'台', l.created_at].join(',');
+    }).join('\n');
+    download('激活码列表.csv', csv);
+  });
+}
+function exportOrders() {
+  api('/admin/orders').then(d => {
+    if (!Array.isArray(d)) return;
+    const csv = '\ufeff订单号,平台,金额(元),套餐,关联激活码,付款时间\n' + d.map(o =>
+      [o.order_id, o.platform, (o.amount/100).toFixed(2), o.plan==='year'?'年卡':'月卡', o.license_code||'', o.paid_at].join(',')
+    ).join('\n');
+    download('订单记录.csv', csv);
+  });
+}
+function download(name, content) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], {type:'text/csv;charset=utf-8'}));
+  a.download = name;
+  a.click();
 }
 function issue() {
   const plan = document.getElementById('planSel').value;
