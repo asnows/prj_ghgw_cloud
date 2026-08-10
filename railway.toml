@@ -1,0 +1,11 @@
+# Railway 部署配置（railway.app）
+# 使用方式：railway init → railway link → railway up（或关联仓库自动部署）
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+healthcheckPath = "/api/health"
+startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2"
+
+# 环境变量在 Railway Dashboard → Variables 配置：
+# LICENSE_SECRET / ADMIN_TOKEN / DATABASE_URL / WXPAY_* / SKILL_DIR

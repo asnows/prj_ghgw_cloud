@@ -1,0 +1,22 @@
+# Render 蓝本部署配置（render.com 免费层可跑）
+# 使用方式：Render Dashboard → New → Blueprint → 关联本仓库
+services:
+  - type: web
+    name: ghgw-cloud
+    runtime: docker
+    repo: https://gitee.com/471297974/prj_ghgw_cloud
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_ENV
+        value: prod
+      - key: LICENSE_SECRET
+        sync: false        # 部署时手动填写
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: DATABASE_URL
+        sync: false        # 生产建议 PostgreSQL（Render 免费 DB）
+      - key: WXPAY_ENABLED
+        value: "false"     # 开通商户后改 true 并填 WXPAY_*
+      - key: SKILL_DIR
+        value: /app/skill
