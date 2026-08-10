@@ -15,12 +15,9 @@ COPY tools ./tools
 
 # 环境变量（生产用环境变量注入，不写入镜像）
 ENV APP_ENV=prod \
-    HOST=0.0.0.0 \
-    PORT=8000
+    HOST=0.0.0.0
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health')" || exit 1
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# 关键：监听 Railway 注入的 $PORT（默认 8080），否则平台健康检查连不上
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2"]
