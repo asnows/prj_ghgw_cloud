@@ -10,7 +10,7 @@ from fastapi import FastAPI
 
 from .config import get_settings
 from .database import init_db
-from .routes import admin, mcp, verify, webhook
+from .routes import admin, admin_ui, mcp, verify, webhook
 
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("ghgw")
@@ -48,6 +48,7 @@ def root():
 app.include_router(verify.router)
 app.include_router(webhook.router)
 app.include_router(admin.router)
+app.include_router(admin_ui.router)
 app.include_router(mcp.router)
 
 
