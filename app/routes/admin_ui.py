@@ -96,6 +96,14 @@ PAGE = """<!DOCTYPE html>
   </div>
 
   <div class="card">
+    <h2>🧾 订单记录（付款→发码）</h2>
+    <table>
+      <thead><tr><th>订单号</th><th>平台</th><th>金额(分)</th><th>套餐</th><th>关联激活码</th><th>付款时间</th></tr></thead>
+      <tbody id="orderBody"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
     <h2>📈 最近用量</h2>
     <table>
       <thead><tr><th>激活码</th><th>工具</th><th>时间</th></tr></thead>
@@ -149,6 +157,13 @@ function loadAll() {
     document.getElementById('usageBody').innerHTML = d.recent.map(u =>
       `<tr><td style="font-family:monospace;font-size:12px;">${u.license_code||'-'}</td>
        <td>${u.tool}</td><td>${u.ts}</td></tr>`).join('');
+  });
+  api('/admin/orders').then(d => {
+    if (!Array.isArray(d)) return;
+    document.getElementById('orderBody').innerHTML = d.map(o =>
+      `<tr><td style="font-family:monospace;font-size:12px;">${o.order_id}</td>
+       <td>${o.platform}</td><td>${o.amount}</td><td>${o.plan==='year'?'年卡':'月卡'}</td>
+       <td style="font-family:monospace;font-size:12px;">${o.license_code||'-'}</td><td>${o.paid_at}</td></tr>`).join('');
   });
 }
 function issue() {

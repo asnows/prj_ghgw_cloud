@@ -48,6 +48,17 @@ def admin_revoke(payload: dict, x_admin_token: str = Header(default="")):
     return {"ok": True, "code": code}
 
 
+@router.get("/orders")
+def admin_orders(x_admin_token: str = Header(default="")):
+    """订单记录（支付→发码 全链路）。"""
+    _guard(x_admin_token)
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT order_id, platform, amount, plan, license_code, status, paid_at FROM orders ORDER BY id DESC LIMIT 200"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 @router.get("/usage")
 def admin_usage(x_admin_token: str = Header(default="")):
     """用量统计。"""
