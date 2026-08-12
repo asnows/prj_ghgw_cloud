@@ -17,16 +17,29 @@ _engine_loaded = False
 
 
 def _load_engine():
-    """按需加载 skill 分析引擎（避免启动时依赖 akshare）。"""
+    """按需加载 skill 分析引擎（避免启动时依赖 akshare）。
+
+    多路径兜底：环境变量 SKILL_DIR → 镜像内固定路径 → 代码相对路径，
+    避免 Railway 上旧 SKILL_DIR 环境变量覆盖 Dockerfile 默认值导致 500。
+    """
     global _engine_loaded
     if _engine_loaded:
         return
-    skill_dir = get_settings().SKILL_DIR
-    scripts = os.path.join(skill_dir, "scripts")
-    if not os.path.isdir(scripts):
-        raise HTTPException(status_code=500, detail=f"SKILL_DIR 无效: {skill_dir}")
-    sys.path.insert(0, scripts)
-    _engine_loaded = True
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        get_settings().SKILL_DIR,
+        "/app/skill",                                  # Dockerfile 默认（ENV SKILL_DIR）
+        os.path.normpath(os.path.join(here, "../../skill")),  # 仓库内 skill/ 相对路径
+    ]
+    for skill_dir in candidates:
+        if not skill_dir:
+            continue
+        scripts = os.path.join(skill_dir, "scripts")
+        if os.path.isdir(scripts):
+            sys.path.insert(0, scripts)
+            _engine_loaded = True
+            return
+    raise HTTPException(status_code=500, detail=f"SKILL_DIR 无效: {get_settings().SKILL_DIR}")
 
 
 def _check(code: str, device: str):

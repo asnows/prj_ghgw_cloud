@@ -38,7 +38,7 @@ async def wechat_notify(request: Request):
 
     # 幂等：同一订单只发一次码
     with db() as conn:
-        existing = conn.execute("SELECT id FROM orders WHERE order_id=?", (out_trade_no,)).fetchone()
+        existing = conn.execute("SELECT id FROM orders WHERE order_id=%s", (out_trade_no,)).fetchone()
         if existing:
             return {"code": "SUCCESS", "message": "订单已处理"}
 
@@ -46,7 +46,7 @@ async def wechat_notify(request: Request):
     lic = issue_license(plan)
     with db() as conn:
         conn.execute(
-            "INSERT INTO orders (order_id, platform, amount, plan, license_code, status, paid_at) VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO orders (order_id, platform, amount, plan, license_code, status, paid_at) VALUES (%s,%s,%s,%s,%s,%s,%s)",
             (out_trade_no, "wechat", data.get("amount", 0), plan, lic["code"], "paid", now_iso()),
         )
     logger.info("自动发码成功: 订单 %s → %s（%s）", out_trade_no, lic["code"], plan)
@@ -66,14 +66,14 @@ async def wechat_notify_logic(data: dict):
     if data.get("trade_state", "SUCCESS") != "SUCCESS":
         return {"code": "SUCCESS", "message": "忽略非成功状态"}
     with db() as conn:
-        existing = conn.execute("SELECT id FROM orders WHERE order_id=?", (out_trade_no,)).fetchone()
+        existing = conn.execute("SELECT id FROM orders WHERE order_id=%s", (out_trade_no,)).fetchone()
         if existing:
             return {"code": "SUCCESS", "message": "订单已处理"}
     plan = _PENDING.get(out_trade_no, "month")
     lic = issue_license(plan)
     with db() as conn:
         conn.execute(
-            "INSERT INTO orders (order_id, platform, amount, plan, license_code, status, paid_at) VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO orders (order_id, platform, amount, plan, license_code, status, paid_at) VALUES (%s,%s,%s,%s,%s,%s,%s)",
             (out_trade_no, "wechat-mock", data.get("amount", 0), plan, lic["code"], "paid", now_iso()),
         )
     return {"code": "SUCCESS", "message": "OK", "license_code": lic["code"]}

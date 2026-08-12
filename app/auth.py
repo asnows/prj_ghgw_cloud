@@ -56,7 +56,7 @@ def issue_license(plan: str = "month") -> dict:
     code = make_code(expire)
     with db() as conn:
         conn.execute(
-            "INSERT INTO licenses (code, plan, days, expires_at, status, created_at) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO licenses (code, plan, days, expires_at, status, created_at) VALUES (%s,%s,%s,%s,%s,%s)",
             (code, plan, days, expire.strftime("%Y-%m-%d"), "active", now_iso()),
         )
     return {"code": code, "plan": plan, "expires_at": expire.strftime("%Y-%m-%d"), "days": days}
@@ -79,7 +79,7 @@ def verify_code(code: str, device_fingerprint: str) -> dict:
         raise ValueError("激活码签名无效")
 
     with db() as conn:
-        row = conn.execute("SELECT * FROM licenses WHERE code=?", (code,)).fetchone()
+        row = conn.execute("SELECT * FROM licenses WHERE code=%s", (code,)).fetchone()
     if row is None:
         raise ValueError("激活码不存在（可能未发放）")
     if row["status"] != "active":
@@ -98,21 +98,21 @@ def verify_code(code: str, device_fingerprint: str) -> dict:
             raise ValueError(f"设备数已达上限（{max_dev} 台），请联系管理员解绑")
         devices.append(device_fingerprint)
         with db() as conn:
-            conn.execute("UPDATE licenses SET devices=? WHERE code=?", (json.dumps(devices), code))
+            conn.execute("UPDATE licenses SET devices=%s WHERE code=%s", (json.dumps(devices), code))
         # 关联 user
         with db() as conn:
             u = conn.execute(
-                "SELECT id FROM users WHERE device_fingerprint=?", (device_fingerprint,)
+                "SELECT id FROM users WHERE device_fingerprint=%s", (device_fingerprint,)
             ).fetchone()
             if u is None:
                 cur = conn.execute(
-                    "INSERT INTO users (device_fingerprint, created_at) VALUES (?,?)",
+                    "INSERT INTO users (device_fingerprint, created_at) VALUES (%s,%s)",
                     (device_fingerprint, now_iso()),
                 )
                 uid = cur.lastrowid
             else:
                 uid = u["id"]
-            conn.execute("UPDATE licenses SET user_id=? WHERE code=?", (uid, code))
+            conn.execute("UPDATE licenses SET user_id=%s WHERE code=%s", (uid, code))
 
     return {
         "valid": True,
@@ -127,6 +127,6 @@ def verify_code(code: str, device_fingerprint: str) -> dict:
 def log_usage(code: str, tool: str, device_fingerprint: str):
     with db() as conn:
         conn.execute(
-            "INSERT INTO usage_logs (license_code, tool, device_fingerprint, ts) VALUES (?,?,?,?)",
+            "INSERT INTO usage_logs (license_code, tool, device_fingerprint, ts) VALUES (%s,%s,%s,%s)",
             (code, tool, device_fingerprint, now_iso()),
         )

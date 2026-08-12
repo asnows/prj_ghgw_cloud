@@ -27,9 +27,9 @@ def admin_stats(x_admin_token: str = Header(default="")):
     soon = (datetime.now(CN_TZ).date() + timedelta(days=7)).isoformat()
     with db() as conn:
         total = conn.execute("SELECT COUNT(*) c FROM licenses").fetchone()["c"]
-        active = conn.execute("SELECT COUNT(*) c FROM licenses WHERE status='active' AND expires_at >= ?", (today,)).fetchone()["c"]
-        expired = conn.execute("SELECT COUNT(*) c FROM licenses WHERE status='active' AND expires_at < ?", (today,)).fetchone()["c"]
-        expiring = conn.execute("SELECT COUNT(*) c FROM licenses WHERE status='active' AND expires_at >= ? AND expires_at <= ?", (today, soon)).fetchone()["c"]
+        active = conn.execute("SELECT COUNT(*) c FROM licenses WHERE status='active' AND expires_at >= %s", (today,)).fetchone()["c"]
+        expired = conn.execute("SELECT COUNT(*) c FROM licenses WHERE status='active' AND expires_at < %s", (today,)).fetchone()["c"]
+        expiring = conn.execute("SELECT COUNT(*) c FROM licenses WHERE status='active' AND expires_at >= %s AND expires_at <= %s", (today, soon)).fetchone()["c"]
         revoked = conn.execute("SELECT COUNT(*) c FROM licenses WHERE status='revoked'").fetchone()["c"]
         month_cards = conn.execute("SELECT COUNT(*) c FROM licenses WHERE plan='month'").fetchone()["c"]
         year_cards = conn.execute("SELECT COUNT(*) c FROM licenses WHERE plan='year'").fetchone()["c"]
@@ -37,7 +37,7 @@ def admin_stats(x_admin_token: str = Header(default="")):
         order_count = conn.execute("SELECT COUNT(*) c FROM orders").fetchone()["c"]
         total_amount = conn.execute("SELECT COALESCE(SUM(amount),0) s FROM orders").fetchone()["s"]
         month_start = today[:8] + "01"
-        month_amount = conn.execute("SELECT COALESCE(SUM(amount),0) s FROM orders WHERE paid_at >= ?", (month_start,)).fetchone()["s"]
+        month_amount = conn.execute("SELECT COALESCE(SUM(amount),0) s FROM orders WHERE paid_at >= %s", (month_start,)).fetchone()["s"]
         devices = conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
     return {
         "total": total, "active": active, "expired": expired, "expiring": expiring,
@@ -54,10 +54,10 @@ def admin_licenses(x_admin_token: str = Header(default=""), q: str = "", status:
     sql = "SELECT code, plan, expires_at, status, devices, created_at FROM licenses WHERE 1=1"
     args = []
     if q:
-        sql += " AND code LIKE ?"
+        sql += " AND code LIKE %s"
         args.append(f"%{q}%")
     if status:
-        sql += " AND status=?"
+        sql += " AND status=%s"
         args.append(status)
     sql += " ORDER BY id DESC LIMIT 300"
     with db() as conn:
@@ -83,7 +83,7 @@ def admin_revoke(payload: dict, x_admin_token: str = Header(default="")):
     _guard(x_admin_token)
     code = (payload or {}).get("code", "")
     with db() as conn:
-        conn.execute("UPDATE licenses SET status='revoked' WHERE code=?", (code,))
+        conn.execute("UPDATE licenses SET status='revoked' WHERE code=%s", (code,))
     return {"ok": True, "code": code}
 
 
