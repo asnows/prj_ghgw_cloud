@@ -218,19 +218,19 @@ function loadLicenses() {
 function exportLicenses() {
   api('/admin/licenses?q='+encodeURIComponent(document.getElementById('searchInput').value.trim())+'&status='+document.getElementById('statusSel').value).then(d => {
     if (!Array.isArray(d)) return;
-    const csv = '\ufeff激活码,套餐,到期日,状态,绑定设备,发放时间\n' + d.map(l => {
+    const csv = '\\ufeff激活码,套餐,到期日,状态,绑定设备,发放时间\\n' + d.map(l => {
       const devs = JSON.parse(l.devices||'[]').length;
       return [l.code, l.plan==='year'?'年卡':'月卡', l.expires_at, l.status, devs+'台', l.created_at].join(',');
-    }).join('\n');
+    }).join('\\n');
     download('激活码列表.csv', csv);
   });
 }
 function exportOrders() {
   api('/admin/orders').then(d => {
     if (!Array.isArray(d)) return;
-    const csv = '\ufeff订单号,平台,金额(元),套餐,关联激活码,付款时间\n' + d.map(o =>
+    const csv = '\\ufeff订单号,平台,金额(元),套餐,关联激活码,付款时间\\n' + d.map(o =>
       [o.order_id, o.platform, (o.amount/100).toFixed(2), o.plan==='year'?'年卡':'月卡', o.license_code||'', o.paid_at].join(',')
-    ).join('\n');
+    ).join('\\n');
     download('订单记录.csv', csv);
   });
 }
