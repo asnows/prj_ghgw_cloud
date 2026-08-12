@@ -71,6 +71,25 @@ class _SqliteCompat:
         return getattr(self._conn, name)
 
 
+class _PgCompat:
+    """psycopg2 连接兼容包装：调用方统一 conn.execute(...) 风格
+    （内部走 cursor），返回真实 cursor 供 fetchone/fetchall 使用。"""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    def execute(self, sql, args=None):
+        cur = self._conn.cursor()
+        cur.execute(sql, args or ())
+        return cur
+
+    def cursor(self):
+        return self._conn.cursor()
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
 @contextmanager
 def db():
     if _db_driver() == "postgres":
@@ -78,7 +97,7 @@ def db():
         from psycopg2.extras import RealDictCursor
         conn = psycopg2.connect(get_settings().DATABASE_URL, cursor_factory=RealDictCursor)
         try:
-            yield conn
+            yield _PgCompat(conn)
             conn.commit()
         except Exception:
             conn.rollback()
