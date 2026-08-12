@@ -1,0 +1,9 @@
+akshare>=1.14.0
+pandas>=2.0
+numpy>=1.26
+PyYAML>=6.0
+requests>=2.31
+scikit-learn>=1.4
+fastmcp>=2.0
+markdown>=3.5
+# lightgbm>=4.0  # 可选：启用 ml_tuning.model=lightgbm 时安装

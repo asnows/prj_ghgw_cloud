@@ -13,6 +13,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY tools ./tools
 
+# 股海怪物分析引擎（MCP 服务复用 skill 的 scripts）
+COPY skill ./skill
+ENV SKILL_DIR=/app/skill
+
 # 环境变量（生产用环境变量注入，不写入镜像）
 ENV APP_ENV=prod \
     HOST=0.0.0.0

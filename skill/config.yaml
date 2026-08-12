@@ -1,0 +1,69 @@
+﻿# ============================================================
+# 股海怪物 全局配置
+# 所有参数均可在此调整，无需改代码
+# ============================================================
+
+# ---- 概率引擎 ----
+k: 2.5                    # Sigmoid 灵敏度系数
+buy_threshold: 0.60       # 回测买入阈值（P >= 阈值 买入）
+sell_threshold: 0.40      # 回测卖出阈值（P <= 阈值 卖出）
+history_window: 250       # 指标计算历史窗口（交易日）
+
+# ---- 输出 ----
+output:
+  bull_top: 10           # 看涨 Top N（上涨概率降序）
+  bear_top: 10           # 看跌 Top N（下跌概率降序）
+  smooth_minutes: 5      # 盘中概率平滑窗口（分钟）
+
+# ---- 因子注册表（插件化，enabled=false 即停用）----
+factors:
+  trend:      {weight: 0.25, enabled: true, scopes: [both, index], params: {ma_windows: [5, 10, 20, 60]}}
+  momentum:   {weight: 0.20, enabled: true, scopes: [both, index], params: {lookback: [5, 20]}}
+  rsi:        {weight: 0.15, enabled: true, scopes: [both, index], params: {period: 14}}
+  macd:       {weight: 0.15, enabled: true, scopes: [both, index], params: {fast: 12, slow: 26, signal: 9}}
+  volume:     {weight: 0.10, enabled: true, scopes: [both, index], params: {volume_ratio_window: 5}}
+  market:     {weight: 0.15, enabled: true, scopes: [both],       params: {benchmark: "sh000001", lookback: 5}}
+  relative_strength: {weight: 0.15, enabled: true, scopes: [index], params: {lookback: 20, benchmark: "sh000001"}}
+  fund_flow:  {weight: 0.15, enabled: true, scopes: [stock],   params: {lookback: 5}}
+  turnover:   {weight: 0.06, enabled: true, scopes: [stock],   params: {hot: 15, cold: 1}}
+  volatility: {weight: 0.06, enabled: true, scopes: [stock],   params: {atr_period: 14, high: 5}}
+  intraday:   {weight: 0.10, enabled: true, scopes: [both, index], params: {mode: "snapshot"}}
+
+# ---- 行业传导（个股）----
+industry_conduction:
+  self_weight: 0.7         # 个股自身概率权重
+  industry_weight: 0.3     # 所属行业概率权重
+
+# ---- 数据层 ----
+data:
+  cache_seconds_intraday: 120    # 盘中快照缓存（秒）
+  cache_seconds_minute: 300      # 分钟线缓存（秒）
+  cache_seconds_close: 86400     # 收盘日线缓存（秒）
+  retry_times: 3                 # 接口重试次数
+  retry_backoff: 1.5             # 重试退避倍率
+  timeout: 15                    # 请求超时（秒）
+  indices:
+    - {name: "上证指数", symbol: "sh000001"}
+    - {name: "创业板指", symbol: "sz399006"}
+    - {name: "科创50",  symbol: "sh000688"}
+
+# ---- 回测 ----
+backtest:
+  initial_capital: 1000000
+  commission: 0.00025     # 佣金（双边）
+  stamp_tax: 0.001        # 印花税（仅卖出）
+  slippage: 0.001         # 滑点
+  warmup_days: 250        # 指标预热窗口（= history_window）
+
+# ---- ML 调优 ----
+ml_tuning:
+  enabled: true
+  mode: auto              # auto 自动周期调优 / manual 仅手动触发
+  model: logistic         # logistic / lightgbm
+  retrain_interval: 20    # 交易日
+  min_samples: 300        # 最少训练样本
+  walk_forward_folds: 5
+  apply_threshold: 0.0    # 样本外准确率需 >= 旧基线 + 该值才生效
+  min_prob_std: 0.05      # 区分度门槛：新权重概率标准差下限
+  min_far_ratio: 0.10     # 区分度门槛：偏离 0.5 超过 5pp 的样本占比下限
+  random_state: 42
