@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Header, HTTPException
 
 from ..auth import issue_license
-from ..database import db
+from ..database import db, now_iso
 
 router = APIRouter(prefix="/admin", tags=["管理"])
 
@@ -85,6 +85,28 @@ def admin_revoke(payload: dict, x_admin_token: str = Header(default="")):
     with db() as conn:
         conn.execute("UPDATE licenses SET status='revoked' WHERE code=%s", (code,))
     return {"ok": True, "code": code}
+
+
+@router.post("/confirm_pay")
+def admin_confirm_pay(payload: dict, x_admin_token: str = Header(default="")):
+    """确认收款并发卡（手动/口令金额模式）：核对订单 → 发卡 → 更新订单。"""
+    _guard(x_admin_token)
+    order_id = (payload or {}).get("order_id", "")
+    with db() as conn:
+        row = conn.execute(
+            "SELECT order_id, plan, status, license_code FROM orders WHERE order_id=%s",
+            (order_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="订单不存在")
+        if row["status"] == "paid" and row["license_code"]:
+            return {"code": 0, "msg": "订单已处理", "license_code": row["license_code"]}
+        lic = issue_license(row["plan"])
+        conn.execute(
+            "UPDATE orders SET status='paid', license_code=%s, paid_at=%s WHERE order_id=%s",
+            (lic["code"], now_iso(), order_id),
+        )
+    return {"code": 0, "msg": "发卡成功",
+            "license_code": lic["code"], "expires_at": lic["expires_at"]}
 
 
 @router.get("/orders")
