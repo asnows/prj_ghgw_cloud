@@ -122,7 +122,7 @@ PAGE = """<!DOCTYPE html>
       <button class="ghost" onclick="exportOrders()">导出 CSV</button>
     </div>
     <table>
-      <thead><tr><th>订单号</th><th>平台</th><th>金额(元)</th><th>套餐</th><th>关联激活码</th><th>付款时间</th></tr></thead>
+      <thead><tr><th>订单号</th><th>平台</th><th>金额(元)</th><th>套餐</th><th>关联激活码</th><th>付款时间</th><th>操作</th></tr></thead>
       <tbody id="orderBody"></tbody>
     </table>
   </div>
@@ -187,7 +187,10 @@ function loadAll() {
     document.getElementById('orderBody').innerHTML = d.map(o =>
       `<tr><td style="font-family:monospace;font-size:12px;">${o.order_id}</td>
        <td>${o.platform}</td><td>${(o.amount/100).toFixed(2)}</td><td>${o.plan==='year'?'年卡':'月卡'}</td>
-       <td style="font-family:monospace;font-size:12px;">${o.license_code||'-'}</td><td>${o.paid_at}</td></tr>`).join('');
+       <td style="font-family:monospace;font-size:12px;">${o.license_code||'-'}</td><td>${o.paid_at||'-'}</td>
+       <td>${o.status==='pending'
+         ? `<button class="ghost" style="padding:4px 10px;font-size:12px;" onclick="confirmPay('${o.order_id}')">确认收款并发卡</button>`
+         : (o.status==='paid' ? '<span class="badge" style="background:#DCFCE7;color:#166534;">已发卡</span>' : '-')}</td></tr>`).join('');
   });
 }
 function loadLicenses() {
@@ -223,6 +226,17 @@ function exportLicenses() {
       return [l.code, l.plan==='year'?'年卡':'月卡', l.expires_at, l.status, devs+'台', l.created_at].join(',');
     }).join('\\n');
     download('激活码列表.csv', csv);
+  });
+}
+function confirmPay(orderId) {
+  if (!confirm('确认已收到该订单款项并立即发卡？')) return;
+  api('/admin/confirm_pay', 'POST', {order_id: orderId}).then(d => {
+    if (d && d.code === 0) {
+      alert('✅ 发卡成功：' + d.license_code);
+      loadOrders();
+    } else {
+      alert('❌ 发卡失败：' + (d && d.detail ? d.detail : '未知错误'));
+    }
   });
 }
 function exportOrders() {
