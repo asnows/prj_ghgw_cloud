@@ -21,11 +21,19 @@ _GATEWAY = "https://openapi.alipay.com/gateway.do"
 
 
 def _load_private_key(pem: str):
-    return serialization.load_pem_private_key(pem.encode(), password=None)
+    """加载应用私钥：兼容 PEM 头（-----BEGIN PRIVATE KEY-----）与裸 base64（DER）。"""
+    key_str = pem.strip()
+    if "BEGIN" not in key_str:
+        return serialization.load_der_private_key(base64.b64decode(key_str), password=None)
+    return serialization.load_pem_private_key(key_str.encode(), password=None)
 
 
 def _load_public_key(pem: str):
-    return serialization.load_pem_public_key(pem.encode())
+    """加载支付宝公钥：兼容 PEM 头与裸 base64（DER）。"""
+    key_str = pem.strip()
+    if "BEGIN" not in key_str:
+        return serialization.load_der_public_key(base64.b64decode(key_str))
+    return serialization.load_pem_public_key(key_str.encode())
 
 
 def _sign_str(content: str, private_key) -> str:
