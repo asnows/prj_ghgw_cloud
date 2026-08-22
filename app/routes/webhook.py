@@ -21,6 +21,46 @@ def create_payment(plan: str) -> dict:
     return order
 
 
+@router.post("/alipay_notify")
+async def alipay_notify(request: Request):
+    """支付宝异步通知：验签 → 查单幂等 → 自动发码。"""
+    from ..services import pay_alipay
+    form = await request.form()
+    params = dict(form)
+    try:
+        pay_alipay.verify_notify(params)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("支付宝通知验签失败: %s", e)
+        return {"code": "FAIL", "msg": "验签失败"}
+    if not pay_alipay.is_notify_success(params):
+        return {"code": "SUCCESS", "msg": "忽略非成功状态"}
+
+    out_trade_no = params.get("out_trade_no", "")
+    if not out_trade_no:
+        return {"code": "FAIL", "msg": "缺少订单号"}
+    # 幂等：同一订单只发一次码
+    with db() as conn:
+        existing = conn.execute(
+            "SELECT id FROM orders WHERE order_id=%s", (out_trade_no,)).fetchone()
+        if existing:
+            return {"code": "SUCCESS", "msg": "订单已处理"}
+        # 支付宝创建预下单时订单已存在（buy 模式）→ 直接取 plan 更新
+        row = conn.execute(
+            "SELECT plan FROM orders WHERE order_id=%s", (out_trade_no,)).fetchone()
+        if row:
+            plan = row["plan"]
+        else:
+            plan = "month"
+        lic = issue_license(plan)
+        conn.execute(
+            "UPDATE orders SET platform='alipay', license_code=%s, status='paid', paid_at=%s "
+            "WHERE order_id=%s",
+            (lic["code"], now_iso(), out_trade_no),
+        )
+    logger.info("支付宝回调发卡成功: %s", lic["code"])
+    return {"code": "SUCCESS", "msg": "成功"}
+
+
 @router.post("/webhook")
 async def wechat_notify(request: Request):
     """微信支付回调：验签 → 查单 → 发码 → 回执。"""
