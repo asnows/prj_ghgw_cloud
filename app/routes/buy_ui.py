@@ -81,11 +81,23 @@ async function create() {
   const d = await r.json();
   if (d.code === 0) {
     document.getElementById('res').style.display = 'block';
-    document.getElementById('res').innerHTML =
-      `<div style="font-size:16px;font-weight:700;">🎉 下单成功！</div>
-       <div style="margin-top:8px;">订单号：<b>${d.order_id}</b>（请保存）</div>
-       <div>请支付口令金额：<b style="font-size:22px;color:#7C3AED;">¥${d.amount_yuan}</b></div>
-       <div class="tip" style="margin-top:8px;">付款后联系客服确认到账，再到取码页输入订单号领取激活码。</div>`;
+    if (d.pay_mode === 'alipay' && d.qr_img) {
+      // 支付宝当面付：展示收款码 + 订单号（付款后自动发卡，可直接取码）
+      document.getElementById('res').innerHTML =
+        `<div style="font-size:16px;font-weight:700;">🎉 订单已生成，请扫码付款</div>
+         <div style="margin-top:8px;">订单号：<b>${d.order_id}</b></div>
+         <div style="margin-top:12px;text-align:center;">
+           <img src="${d.qr_img}" style="width:220px;height:220px;border-radius:10px;border:1px solid #E9D5FF;"/>
+         </div>
+         <div class="tip" style="margin-top:10px;">打开支付宝【扫一扫】扫码付款 ¥<b style="color:#7C3AED;">${d.amount_yuan}</b>。
+         付款成功后自动发卡，到 <a href="/buy/query" style="color:#7C3AED;">取码页</a> 输入订单号领取激活码。</div>`;
+    } else {
+      document.getElementById('res').innerHTML =
+        `<div style="font-size:16px;font-weight:700;">🎉 下单成功！</div>
+         <div style="margin-top:8px;">订单号：<b>${d.order_id}</b>（请保存）</div>
+         <div>请支付口令金额：<b style="font-size:22px;color:#7C3AED;">¥${d.amount_yuan}</b></div>
+         <div class="tip" style="margin-top:8px;">付款后联系客服确认到账，再到取码页输入订单号领取激活码。</div>`;
+    }
   } else {
     alert('下单失败：' + d.msg);
   }
