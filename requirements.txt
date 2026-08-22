@@ -15,3 +15,4 @@ scikit-learn>=1.4
 markdown>=3.5
 # ---- PostgreSQL 支持（生产数据库）----
 psycopg2-binary>=2.9
+qrcode[pil]>=7.4
