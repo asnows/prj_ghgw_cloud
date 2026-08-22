@@ -28,6 +28,11 @@ class Settings:
 
     # 微信支付
     WXPAY_ENABLED: bool = os.getenv("WXPAY_ENABLED", "false").lower() == "true"
+    # 支付宝当面付（RSA2）
+    ALIPAY_ENABLED: bool = os.getenv("ALIPAY_ENABLED", "false").lower() == "true"
+    ALIPAY_APPID: str = os.getenv("ALIPAY_APPID", "")
+    ALIPAY_PRIVATE_KEY: str = os.getenv("ALIPAY_PRIVATE_KEY", "")
+    ALIPAY_PUBLIC_KEY: str = os.getenv("ALIPAY_PUBLIC_KEY", "")
     WXPAY_MCHID: str = os.getenv("WXPAY_MCHID", "")
     WXPAY_APPID: str = os.getenv("WXPAY_APPID", "")
     WXPAY_APIV3_KEY: str = os.getenv("WXPAY_APIV3_KEY", "")
